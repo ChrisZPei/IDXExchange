@@ -393,6 +393,13 @@ st.markdown("---")
 
 st.title("IDXExchange: Model Performance Dashboard")
 
+# Project Goal
+st.markdown("""
+**Project Goal:** Build a machine learning model to predict real estate close prices using MLS (Multiple Listing Service) data. 
+We compare multiple algorithms (XGBoost, LightGBM, Random Forest, etc.) and feature engineering approaches to identify the best-performing model for accurate price predictions.
+""")
+st.markdown("---")
+
 # Sidebar - empty for user's own QR code
 
 st.write(
