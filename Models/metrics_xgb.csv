@@ -1,0 +1,2 @@
+learning_rate,max_depth,subsample,colsample_bytree,n_estimators,Best_iteration,Trimmed_R2,Trimmed_MAPE,MdAPE
+0.05,6,0.8,0.8,2000,1834,0.926,12.46,9.02
