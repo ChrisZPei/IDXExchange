@@ -103,17 +103,33 @@ def load_xgb_pipeline(path):
                 st.success("✅ Model automatically converted to Python 3.13 format!")
                 return obj
             except Exception as convert_error:
-                # Conversion failed - Python 3.13 can't load these models
-                st.error(f"⚠️ Model loading error: {error_str[:100]}")
-                st.error("**Python 3.13 cannot load these Python 3.12.4 models.**")
-                st.warning("**Solution Required**: Models must be converted before deployment.")
-                st.info("""
-                **To fix this:**
-                1. Run `python convert_models.py` locally with Python 3.13 (if available)
-                2. Or use the original Python 3.12.4 to convert: `python convert_models.py`
-                3. Then commit and push the converted models to GitHub
-                4. Redeploy on Streamlit Cloud
-                """)
+                # Conversion failed - check if it's a Git LFS issue
+                import os
+                file_size = os.path.getsize(path) if os.path.exists(path) else 0
+                is_lfs_pointer = file_size < 1000  # LFS pointers are typically < 200 bytes
+                
+                if is_lfs_pointer:
+                    st.error(f"⚠️ Model loading error: Git LFS pointer detected")
+                    st.error("**Issue**: Model files are Git LFS pointers, not actual model files.")
+                    st.warning("**Solution Required**: Actual model files need to be in Git LFS store.")
+                    st.info("""
+                    **To fix this:**
+                    1. Ensure actual model files (large .joblib files) are pushed to Git LFS
+                    2. Or copy actual model files to Models/ folder and commit them
+                    3. Push to GitHub: `git add Models/*.joblib && git commit -m "Add model files" && git push`
+                    4. Streamlit Cloud will automatically redeploy
+                    """)
+                else:
+                    st.error(f"⚠️ Model loading error: {error_str[:100]}")
+                    st.error("**Python 3.13 cannot load these Python 3.12.4 models.**")
+                    st.warning("**Solution Required**: Models must be converted before deployment.")
+                    st.info("""
+                    **To fix this:**
+                    1. Run `python convert_models.py` locally with Python 3.13 (if available)
+                    2. Or use the original Python 3.12.4 to convert: `python convert_models.py`
+                    3. Then commit and push the converted models to GitHub
+                    4. Redeploy on Streamlit Cloud
+                    """)
                 st.stop()
                 return None
         else:
@@ -378,7 +394,7 @@ Use this app to:
     """
 )
 
-# Add QR code for deployment URL (only when deployed)
+# Add QR code for deployment URL (always show when deployed, even if models fail)
 try:
     # st.request only exists in deployed Streamlit Cloud
     if hasattr(st, 'request') and st.request and "streamlit.app" in st.request.host:
@@ -388,8 +404,13 @@ try:
             st.sidebar.markdown("### QR Code")
             st.sidebar.image(qr_img, use_container_width=True, caption="Scan to open app")
             st.sidebar.markdown(f"**URL:** `{url}`")
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("**Share this app:** Copy the URL above or scan the QR code")
         except Exception as e:
-            st.sidebar.info(f"QR code generation note: {str(e)}")
+            # Even if QR generation fails, show the URL
+            st.sidebar.markdown("### Share This App")
+            st.sidebar.markdown(f"**URL:** `{url}`")
+            st.sidebar.info(f"QR code generation failed: {str(e)}")
     else:
         st.sidebar.info(
             """
