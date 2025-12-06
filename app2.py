@@ -55,8 +55,9 @@ def load_xgb_pipeline(path):
         return obj
     except (KeyError, pickle.UnpicklingError, ValueError, Exception) as e:
         error_str = str(e)
-        # Check if this is a Python version compatibility issue
+        # Check if this is a Python version compatibility issue or scikit-learn version issue
         is_pickle_error = "pickle" in error_str.lower() or "118" in str(e) or "unpickling" in error_str.lower()
+        is_sklearn_error = "_RemainderColsList" in error_str or "sklearn.compose" in error_str or "can't get attribute" in error_str.lower()
         
         # Try alternative loading methods for pickle errors
         if is_pickle_error:
@@ -136,8 +137,12 @@ def load_xgb_pipeline(path):
             # Not a pickle error or not Python 3.13 - show original error
             st.error(f"⚠️ Model loading error: {error_str[:100]}")
             if sys.version_info >= (3, 13):
-                st.error("This appears to be a Python version compatibility issue.")
-                st.info("**Solution**: Run `python convert_models.py` to convert models to Python 3.13 format.")
+                if is_sklearn_error:
+                    st.error("**scikit-learn Version Mismatch**: Models were saved with scikit-learn 1.6.1, but environment has a different version.")
+                    st.warning("**Solution**: Pin scikit-learn==1.6.1 in requirements.txt (already fixed - redeploying...)")
+                else:
+                    st.error("This appears to be a Python version compatibility issue.")
+                    st.info("**Solution**: Run `python convert_models.py` to convert models to Python 3.13 format.")
             else:
                 # Python 3.12.x but different minor version
                 current_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
