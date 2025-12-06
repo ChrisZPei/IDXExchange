@@ -386,7 +386,17 @@ metric_labels = {
 
 st.title("IDXExchange: Model Performance Dashboard")
 
-# Sidebar removed - user will create their own QR code for presentation
+# ========== Sidebar - Team Information ==========
+st.sidebar.markdown("## 👥 Team")
+st.sidebar.markdown("### Group DS 32")
+st.sidebar.markdown("""
+**Team Members:**
+1. Christopher Pei
+2. Kristal Hong
+3. Nashra Younus
+4. Julianne Marc Tamayo
+5. Carol Zhang
+""")
 
 st.write(
     """
