@@ -386,56 +386,7 @@ metric_labels = {
 
 st.title("IDXExchange: Model Performance Dashboard")
 
-# ========== Sidebar - Share/QR Code ==========
-st.sidebar.markdown("## 📱 Share This App")
-st.sidebar.markdown(
-    """
-**Live Interactive Demo** powered by Streamlit
-    
-Use this app to:
-- Compare ML model performance
-- Make real-time price predictions
-- Test different feature sets
-    """
-)
-
-# Add QR code for deployment URL (always show when deployed, even if models fail)
-try:
-    # st.request only exists in deployed Streamlit Cloud
-    if hasattr(st, 'request') and st.request and "streamlit.app" in st.request.host:
-        url = f"https://{st.request.host}"
-        try:
-            qr_img = generate_qr_code(url)
-            st.sidebar.markdown("### QR Code")
-            st.sidebar.image(qr_img, use_container_width=True, caption="Scan to open app")
-            st.sidebar.markdown(f"**URL:** `{url}`")
-            st.sidebar.markdown("---")
-            st.sidebar.markdown("**Share this app:** Copy the URL above or scan the QR code")
-        except Exception as e:
-            # Even if QR generation fails, show the URL
-            st.sidebar.markdown("### Share This App")
-            st.sidebar.markdown(f"**URL:** `{url}`")
-            st.sidebar.info(f"QR code generation failed: {str(e)}")
-    else:
-        st.sidebar.info(
-            """
-            **Local Development Mode**
-            
-            QR code appears when deployed to Streamlit Cloud.
-            
-            See `DEPLOYMENT.md` for instructions.
-            """
-        )
-except AttributeError:
-    st.sidebar.info(
-        """
-        **Local Development Mode**
-        
-        QR code appears when deployed to Streamlit Cloud.
-        
-        See `DEPLOYMENT.md` for instructions.
-        """
-    )
+# Sidebar removed - user will create their own QR code for presentation
 
 st.write(
     """
