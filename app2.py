@@ -47,9 +47,16 @@ XGB_HYBRID_PATH = MODELS_DIR / "xgb_hybrid_pipeline.joblib"
 # Custom loader to extract the pipeline from XGBServingModel wrapper
 def load_xgb_pipeline(path):
     """Load XGBoost pipeline - returns XGBServingModel wrapper or sklearn pipeline"""
-    obj = load(path)
-    # Just return the object as-is, we'll handle it in the prediction logic
-    return obj
+    try:
+        obj = load(path)
+        # Just return the object as-is, we'll handle it in the prediction logic
+        return obj
+    except (KeyError, pickle.UnpicklingError, ValueError) as e:
+        st.error(f"⚠️ Model loading error: {str(e)[:100]}")
+        st.error("This is a Python version compatibility issue. The models were saved with Python 3.12 but the environment is using Python 3.13.")
+        st.info("Local development: Run `streamlit run app2.py` locally to use the app with Python 3.12.4")
+        st.stop()
+        return None
 
 # Generate QR code from URL
 def generate_qr_code(url):
