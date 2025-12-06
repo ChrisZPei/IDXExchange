@@ -29,6 +29,7 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints
 *.ipynb
-Models/*.joblib
-Models/hybrid_forest.joblib
-Models/hybrid_forest.joblib
+# Note: Model files are needed for deployment, so we include them
+# Models/*.joblib  # Commented out - models needed for Streamlit Cloud
+# Backup directory can be excluded to save space (optional)
+# Models/backup_python312/

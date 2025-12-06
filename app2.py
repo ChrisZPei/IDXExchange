@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import streamlit as st
-from joblib import load
+from joblib import load, dump
 import pickle
 import sys
 import altair as alt
@@ -46,17 +46,103 @@ XGB_HYBRID_PATH = MODELS_DIR / "xgb_hybrid_pipeline.joblib"
 
 # Custom loader to extract the pipeline from XGBServingModel wrapper
 def load_xgb_pipeline(path):
-    """Load XGBoost pipeline - returns XGBServingModel wrapper or sklearn pipeline"""
+    """Load XGBoost pipeline - returns XGBServingModel wrapper or sklearn pipeline.
+    Automatically converts models to Python 3.13 format if needed (on Streamlit Cloud).
+    """
     try:
         obj = load(path)
         # Just return the object as-is, we'll handle it in the prediction logic
         return obj
-    except (KeyError, pickle.UnpicklingError, ValueError) as e:
-        st.error(f"⚠️ Model loading error: {str(e)[:100]}")
-        st.error("This is a Python version compatibility issue. The models were saved with Python 3.12 but the environment is using Python 3.13.")
-        st.info("Local development: Run `streamlit run app2.py` locally to use the app with Python 3.12.4")
-        st.stop()
-        return None
+    except (KeyError, pickle.UnpicklingError, ValueError, Exception) as e:
+        error_str = str(e)
+        # Check if this is a Python version compatibility issue
+        is_pickle_error = "pickle" in error_str.lower() or "118" in str(e) or "unpickling" in error_str.lower()
+        
+        # Try alternative loading methods for pickle errors
+        if is_pickle_error:
+            # Try loading with different pickle protocols
+            try:
+                import joblib
+                # Try with compress=False and different protocols
+                obj = joblib.load(path)
+                # If successful, re-save with current Python version
+                dump(obj, path, protocol=pickle.HIGHEST_PROTOCOL)
+                return obj
+            except:
+                pass
+            
+            # Try loading from backup if it exists
+            backup_path = path.parent / "backup_python312" / path.name
+            if backup_path.exists():
+                try:
+                    obj = load(backup_path)
+                    # Re-save with current version
+                    dump(obj, path, protocol=pickle.HIGHEST_PROTOCOL)
+                    return obj
+                except:
+                    pass
+        
+        if is_pickle_error and sys.version_info >= (3, 13):
+            # We're on Python 3.13 (likely Streamlit Cloud) - try automatic conversion
+            try:
+                # Python 3.13 has improved pickle compatibility and might be able to load
+                # Python 3.12 models. Try loading with different approaches.
+                
+                # First, try loading with joblib's default (might work)
+                try:
+                    obj = load(path)
+                except:
+                    # If that fails, try with explicit protocol handling
+                    # Python 3.13 should handle older protocols better
+                    import joblib
+                    with open(path, 'rb') as f:
+                        obj = joblib.load(f)
+                
+                # If we got here, loading succeeded - re-save with Python 3.13 format
+                dump(obj, path, protocol=5)
+                st.success("✅ Model automatically converted to Python 3.13 format!")
+                return obj
+            except Exception as convert_error:
+                # Conversion failed - Python 3.13 can't load these models
+                st.error(f"⚠️ Model loading error: {error_str[:100]}")
+                st.error("**Python 3.13 cannot load these Python 3.12.4 models.**")
+                st.warning("**Solution Required**: Models must be converted before deployment.")
+                st.info("""
+                **To fix this:**
+                1. Run `python convert_models.py` locally with Python 3.13 (if available)
+                2. Or use the original Python 3.12.4 to convert: `python convert_models.py`
+                3. Then commit and push the converted models to GitHub
+                4. Redeploy on Streamlit Cloud
+                """)
+                st.stop()
+                return None
+        else:
+            # Not a pickle error or not Python 3.13 - show original error
+            st.error(f"⚠️ Model loading error: {error_str[:100]}")
+            if sys.version_info >= (3, 13):
+                st.error("This appears to be a Python version compatibility issue.")
+                st.info("**Solution**: Run `python convert_models.py` to convert models to Python 3.13 format.")
+            else:
+                # Python 3.12.x but different minor version
+                current_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+                st.error(f"**Python Version Mismatch**: Models were saved with Python 3.12.4, but you're running Python {current_version}")
+                st.warning("**Solutions:**")
+                st.info("""
+                **Option 1 (Recommended): Use Python 3.12.4**
+                - Install Python 3.12.4: https://www.python.org/downloads/
+                - Create a virtual environment: `python3.12.4 -m venv venv`
+                - Activate and run: `streamlit run app2.py`
+                
+                **Option 2: Restore from backup and try again**
+                - Run: `python restore_models.py`
+                - This restores the original Python 3.12.4 models
+                
+                **Option 3: For deployment only**
+                - Deploy to Streamlit Cloud (Python 3.13)
+                - The app will attempt automatic conversion on first load
+                """)
+            st.stop()
+            return None
 
 # Generate QR code from URL
 def generate_qr_code(url):
@@ -78,10 +164,19 @@ def generate_qr_code(url):
     buf.seek(0)
     return buf
 
-xgb_pipelines = {
-    "base": load_xgb_pipeline(XGB_BASE_PATH),
-    "hybrid": load_xgb_pipeline(XGB_HYBRID_PATH),
-}
+# Load models lazily - only when needed (allows Streamlit to start even if models fail)
+@st.cache_resource
+def get_xgb_pipelines():
+    """Load XGBoost pipelines with caching. Returns dict of pipelines or None if loading fails."""
+    pipelines = {}
+    for key, path in [("base", XGB_BASE_PATH), ("hybrid", XGB_HYBRID_PATH)]:
+        pipeline = load_xgb_pipeline(path)
+        if pipeline is not None:
+            pipelines[key] = pipeline
+    return pipelines if pipelines else None
+
+# Initialize pipelines (will be loaded on first use)
+xgb_pipelines = None
 
 # -----------------------------
 # Feature definitions for XGBoost
@@ -855,6 +950,14 @@ with st.form(key="xgb_prediction_form"):
         # Make sure DataFrame has columns in the order used during training
         input_df = pd.DataFrame([[input_row[col] for col in expected_cols]], columns=expected_cols)
 
+        # Load pipelines if not already loaded
+        if xgb_pipelines is None:
+            xgb_pipelines = get_xgb_pipelines()
+        
+        if xgb_pipelines is None or model_key not in xgb_pipelines:
+            st.error(f"⚠️ Model '{model_key}' is not available. Please check model files.")
+            st.stop()
+        
         pipe = xgb_pipelines[model_key]
         
         try:
