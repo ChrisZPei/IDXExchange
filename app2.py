@@ -384,19 +384,16 @@ metric_labels = {
     "MdAPE_%": "MdAPE (%)",
 }
 
+# Team Information
+st.markdown("### Group DS 32")
+st.markdown("""
+**Team Members:** Christopher Pei, Kristal Hong, Nashra Younus, Julianne Marc Tamayo, Carol Zhang
+""")
+st.markdown("---")
+
 st.title("IDXExchange: Model Performance Dashboard")
 
-# ========== Sidebar - Team Information ==========
-st.sidebar.markdown("## 👥 Team")
-st.sidebar.markdown("### Group DS 32")
-st.sidebar.markdown("""
-**Team Members:**
-1. Christopher Pei
-2. Kristal Hong
-3. Nashra Younus
-4. Julianne Marc Tamayo
-5. Carol Zhang
-""")
+# Sidebar - empty for user's own QR code
 
 st.write(
     """
