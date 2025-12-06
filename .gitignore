@@ -30,3 +30,5 @@ htmlcov/
 .ipynb_checkpoints
 *.ipynb
 Models/*.joblib
+Models/hybrid_forest.joblib
+Models/hybrid_forest.joblib
