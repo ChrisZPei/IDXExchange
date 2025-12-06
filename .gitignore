@@ -31,5 +31,5 @@ htmlcov/
 *.ipynb
 # Note: Model files are needed for deployment, so we include them
 # Models/*.joblib  # Commented out - models needed for Streamlit Cloud
-# Backup directory can be excluded to save space (optional)
-# Models/backup_python312/
+# Backup directory excluded (local backup only, too large for GitHub)
+Models/backup_python312/
